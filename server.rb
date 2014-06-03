@@ -19,19 +19,22 @@ def get_recipes
     conn.exec('SELECT name, id FROM recipes')
   end
   recipes = recipes.to_a
+  recipes = recipes.sort_by {|recipe| recipe["name"]}
 end
 
-def get_recipe_info
+def get_recipe_info(recipe_id)
+  query = 'SELECT name, description, instructions FROM recipes WHERE recipes.id = $1'
   recipe_info = db_connection do |conn|
-    conn.exec('SELECT recipes.name, recipes.description, recipes.instructions, recipes.id FROM recipes')
+    conn.exec_params(query, [recipe_id])
   end
   recipe_info = recipe_info.to_a
 end
 
-def get_recipe_ingredients
+def get_recipe_ingredients(recipe_id)
+  query = 'SELECT ingredients.name FROM ingredients JOIN recipes ON recipes.id = ingredients.recipe_id WHERE recipes.id = $1'
   recipe_ingredients = db_connection do |conn|
-    conn.exec('SELECT recipes.id, ingredients.name FROM recipes
-    JOIN ingredients ON ingredients.recipe_id = recipes.id')
+    conn.exec_params(query, [recipe_id])
+
   end
   recipe_ingredients = recipe_ingredients.to_a
 end
@@ -43,21 +46,10 @@ get '/recipes/' do
 end
 
 get '/recipes/:id' do
-  @recipe_info = get_recipe_info
-  @recipe_info.each do |recipe|
-    if recipe["id"] == params[:id]
-      @recipe_info = recipe
-    end
-    @recipe_info
-  end
-  @recipe_ingredients = get_recipe_ingredients
-  @final_ingredients = []
-  @recipe_ingredients.each do |ingredient|
-    if ingredient["recipe_id"] == params[:id]
-      @final_ingredients << ingredient
-    end
-  @final_ingredients
-  end
+  @recipe_id = params[:id]
+  @recipe_info = get_recipe_info(@recipe_id)
+
+  @recipe_ingredients = get_recipe_ingredients(@recipe_id)
 
   erb :'recipe.html'
 end
